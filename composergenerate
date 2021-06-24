@@ -1,0 +1,81 @@
+#! /usr/bin/bash
+
+### variables
+# wpackagist
+# custom
+# plugins dir
+# project
+
+gd(){
+    if [ -z "$1" ]; then
+        echo "Usage: gd [directory]";
+        return 1
+    else
+        cd **"/$1"
+    fi
+}
+wppp(){
+    pwd=$(pwd)
+    if [[ "$pwd" =~ localhost ]]
+    then
+        # echo "your in wordpress instalation"
+        wpDir=$(echo "$pwd" | grep -o  '\/.*localhost')
+        cd $wpDir
+        gd app/plugins
+    else
+        echo "please be in wordpress directory"
+    fi
+}
+wppp
+wpr(){
+    pwd=$(pwd)
+    if [[ "$pwd" =~ localhost ]]
+    then
+        # echo "your in wordpress instalation"
+        wpDir=$(echo "$pwd" | grep -o  '\/.*localhost')
+        cd $wpDir
+    else
+        echo "please be in wordpress directory"
+    fi
+}
+createWPackagist() {
+for n in $(ls -d */); do
+	wget --quiet --output-document=test  'https://wpackagist.wpsv.se/search?q='${n%/}'&type=plugin&search='
+	isPluginInRepo=$(cat test | grep "data-name=\""${n%/}"\"")
+	if [[ ! -z $isPluginInRepo ]]; then
+	echo 'plugin is free | ' ${n%/}
+	wpackagist+=(${n%/})
+	else
+		echo 'plugin is not free | ' ${n%/}
+		custom+=(${n%/})
+	fi
+done
+rm test
+}
+# add list of free plugins
+createWPackagistJson(){
+	wpr
+	cd ./../
+	rm plugins.json
+	touch plugins.json
+	echo '"require": {' >> plugins.json
+	for i in "${wpackagist[@]}"; do
+		echo '"wpackagist-plugin/'$i'": "*",' >> plugins.json
+	done
+	echo '}' >> plugins.json
+	echo 'json has been created!'
+}
+# add exludes to gitignore for premium plugins
+createCustomPLuginsDir(){
+		echo '// add this to git ignore' >> plugins.json
+		echo ''
+	for i in "${custom[@]}"; do
+		echo '!web/app/plugins/'$i >> plugins.json
+	done
+	echo ''
+	echo '////////////////////////////' >> plugins.json
+	echo 'custom plugins dir has been created'
+}
+createWPackagist
+createWPackagistJson
+createCustomPLuginsDir
