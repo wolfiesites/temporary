@@ -1,0 +1,126 @@
+#go down to the directory, directory needs to be unambiguous
+gd(){
+    if [ -z "$1" ]; then
+        echo "Usage: gd [directory]";
+        return 1
+    else
+        cd **"/$1"
+    fi
+}
+#go up to the directory, directory needs to be unambiguous
+gu ()
+{
+    if [ -z "$1" ]; then
+        return
+    fi
+    local gu=$1
+    cd "${PWD/\/$gu\/*//$gu}"
+}
+## add autocompletion for going up
+_gu()
+{
+    local cur=${COMP_WORDS[COMP_CWORD]}
+    local d=${PWD//\//\ }
+    COMPREPLY=( $( compgen -W "$d" -- "$cur" ) )
+}
+complete -F _gu gu
+
+# find and go to file's directory [name can be unprecise: style.css we do: fg style ]
+fg() {
+    if [[ ! -z $1 ]]; then
+        pathToDir=$(find "." -type f -name $1'*' | fzf)
+        if [[ ! -z $pathToDir ]]; then
+            currentPath=$(pwd)
+            pathToDirWithNoDot=${pathToDir##./}
+            pathToDirWithNoDotWithNoFileName=${pathToDir%/*}
+            absolutePathToDir=$currentPath'/'$pathToDirWithNoDot
+            cd $pathToDirWithNoDotWithNoFileName
+        fi
+    else
+        echo 'what file directory ud like to go?'
+    fi
+}
+# find and go to directory [name can be unprecise: plugins we do: fg plug ]
+fdg() {
+    if [[ ! -z $1 ]]; then
+        pathToDir=$(find "." -type d -name $1'*' | fzf)
+        if [[ ! -z $pathToDir ]]; then
+            currentPath=$(pwd)
+            absolutePathToDir=$currentPath'/'${pathToDir##./}
+            cd $absolutePathToDir
+        fi
+    else
+        echo 'tell me what dir ud like to go!?'
+    fi
+}
+
+### WORDPRESS RELATED paths
+# in order to work u need to be in wordpress instalation and ur wordpress root folder 
+# need to be named:   example.localhost
+# suffix .localhost is needed
+
+wpr(){
+    pwd=$(pwd)
+    if [[ "$pwd" =~ localhost ]]
+    then
+        # echo "your in wordpress instalation"
+        wpDir=$(echo "$pwd" | grep -o  '\/.*localhost')
+        cd $wpDir
+    else
+        echo "please be in wordpress directory"
+    fi
+}
+
+# !!!! This need WP CLI to be installed !!!
+wpt(){
+    wpr
+    #store find output in array
+    file_list=()
+    while IFS= read -d $'\0' -r file ; do
+     file_list=("${file_list[@]}" "$file")
+ done < <(find -type f -name "wp-load.php" -print0)
+
+    # echo "${file_list[@]}" # output all items from array
+
+    count=${#file_list[@]} # count items in array
+    lr=$(($count - 1))
+    wpLoadDir=${file_list[$lr]} # get last item in array / u can redeclare variable in bash
+    touch tmp.php
+    echo  '<?php' >> tmp.php
+    echo  'require_once("'$wpLoadDir'");' >> tmp.php
+    echo  '$themeDir = get_stylesheet_directory();' >> tmp.php
+    echo  'echo " ";' >> tmp.php
+    echo  'echo "tagdirstart:".$themeDir;' >> tmp.php
+    echo  'exit;' >> tmp.php
+    themeDir=$(ldwork php tmp.php | grep "tagdirstart" )
+    rm tmp.php
+    printf 'your in theme: '${RED}${themeDir##*/}${NC}'\n' #cut all besides end of the line
+    cd ${WWWD}${themeDir##*tagdirstart:/var/www}
+}
+
+wpp(){
+    pwd=$(pwd)
+    if [[ "$pwd" =~ localhost ]]; then
+        # echo "your in wordpress instalation"
+        wpDir=$(echo "$pwd" | grep -o  '\/.*localhost')
+        cd $wpDir
+        gd wp-content/plugins
+    else
+        echo "please be in wordpress directory"
+    fi
+}
+
+# go to wordpress root and find directory to go
+fdr(){
+    if [[ ! -z $1 ]]; then
+        wpr
+        pathToDir=$(find "." -type d -name $1'*' | fzf)
+        if [[ ! -z $pathToDir ]]; then
+            currentPath=$(pwd)
+            absolutePathToDir=$currentPath'/'${pathToDir##./}
+            cd $absolutePathToDir
+        fi
+    else
+        echo 'tell me what dir ud like to go!?'
+    fi
+}
